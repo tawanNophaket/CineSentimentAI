@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>โปรเเกรมทำนายการรีวิวหนัง</title>
+    <style>
+        body {
+            text-align: center; 
+            margin: 0;
+            padding-top: 50px; 
+        }
+        .container {
+            display: inline-block; 
+        }
+        textarea {
+            width: 300px;
+            height: 100px;
+            margin-bottom: 10px; 
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container"> <!-- เพิ่ม div container รอบภายนอกของ form และ result -->
+        <form id="predictionForm">
+            <textarea name="review"></textarea>
+            <input type="submit" value="ให้โมเดลทำนาย">
+        </form>
+
+        <div id="result">
+            <!-- ส่วนนี้จะเป็นสถานที่แสดงผลการทำนาย -->
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $('#predictionForm').on('submit', function (event) {
+            event.preventDefault();
+
+            $.ajax({
+                url: '/predict',
+                method: 'POST',
+                data: $(this).serialize(),
+                success: function (data) {
+                    const predictionText = "ผลการทำนายจากโมเดล: " + data.prediction;
+                    $('#result').html("<h2>" + predictionText + "</h2>");
+
+                    // เพิ่มปุ่ม feedback
+                    const feedbackHtml = `
+                        <p>ข้อความรีวิว: ${$('textarea[name="review"]').val()}</p>
+                        <button class="feedback" data-correctness="โมเดลทำนายถูกต้อง">ถูกต้อง</button>
+                        <button class="feedback" data-correctness="โมเดลทำนายไม่ถูกต้อง">ไม่ถูกต้อง</button>
+                    `;
+                    $('#result').append(feedbackHtml);
+                }
+            });
+        });
+
+        // ใช้ event delegation สำหรับปุ่ม feedback
+        $('#result').on('click', '.feedback', function () {
+            const correctness = $(this).data('correctness');
+            const review = $('textarea[name="review"]').val();
+            const predictedSentiment = ($('#result h2').text().split(":")[1]).trim();
+
+            if (correctness === "โมเดลทำนายไม่ถูกต้อง") {
+                $.post("/feedback", {
+                    review: review,
+                    predicted_sentiment: predictedSentiment,
+                    correctness: correctness
+                }, function (data) {
+                    if (data.success) {
+                        alert("ขอบคุณสำหรับ feedback ของคุณ! เราจะใช้ข้อมูลนี้เพื่อปรับปรุงโมเดลให้ดียิ่งขึ้น");
+                    }
+                });
+            } else {
+                // หากผู้ใช้กด "ถูกต้อง" ไม่ต้องทำอะไร
+                $('textarea[name="review"]').val('');  // ล้างข้อความ
+            }
+        });
+
+    </script>
+</body>
+
+</html>
